@@ -1,7 +1,7 @@
 import json
+import math
 import os
 
-import math
 import matplotlib.pyplot as plt
 import mojimoji
 import numpy as np
@@ -10,7 +10,7 @@ import wandb
 from seqeval.metrics import f1_score, accuracy_score, precision_score, recall_score
 from torch import optim
 from tqdm import tqdm
-from transformers import get_linear_schedule_with_warmup, AutoTokenizer, AutoModelForTokenClassification
+from transformers import get_linear_schedule_with_warmup, BertJapaneseTokenizer, BertForTokenClassification
 
 from BERT import data_utils
 from util import text_utils
@@ -78,41 +78,23 @@ class NERModel:
         self.max_size = None
 
     @classmethod
-    def load(cls, model_dir, device='cpu', local_files_only=False):
-        tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=local_files_only)
-        model = AutoModelForTokenClassification.from_pretrained(model_dir, local_files_only=local_files_only)
-
-        model.config.attention_probs_dropout_prob = 0.4  # Set the dropout probability for attention layers
-        model.config.hidden_dropout_prob = 0.4  # Set the dropout probability for hidden laye
-
-        try:
-            with open(model_dir + '/label_vocab.json', 'r') as f:
-                label_vocab = json.load(f)
-        except Exception:
-            try:
-                with open(model_dir + '/vocab.txt', 'r') as f:
-                    label_vocab = {line.strip(): i for i, line in enumerate(f)}
-            except Exception:
-                label_vocab = {v: k for k, v in tokenizer.get_vocab().items()}
-
-
-        return cls(model, tokenizer, label_vocab, device)
-
-    @classmethod
     def load_transformers_model(cls, pre_trained_model_name, model_dir, device='cpu', local_files_only=False):
-        tokenizer = AutoTokenizer.from_pretrained(pre_trained_model_name, local_files_only=local_files_only)
+        tokenizer = BertJapaneseTokenizer.from_pretrained(pre_trained_model_name, local_files_only=local_files_only)
 
         with open(model_dir + '/label_vocab.json', 'r') as f:
             label_vocab = json.load(f)
 
-        model = AutoModelForTokenClassification.from_pretrained(pre_trained_model_name, num_labels=len(label_vocab),
+        tokenizer.add_tokens(['⧫'])
+        tokenizer.add_special_tokens({'additional_special_tokens': ['⧫']})
+
+        model = BertForTokenClassification.from_pretrained(pre_trained_model_name, num_labels=len(label_vocab),
                                                            local_files_only=local_files_only)
-
-        model.config.attention_probs_dropout_prob = 0.4  # Set the dropout probability for attention layers
-        model.config.hidden_dropout_prob = 0.4  # Set the dropout probability for hidden laye
-
         model_path = model_dir + '/final.model'
-        model.load_state_dict(torch.load(model_path, map_location=device))
+        try:
+            model.load_state_dict(torch.load(model_path, map_location=device))
+        except Exception as e:
+            model.resize_token_embeddings(len(tokenizer))
+            model.load_state_dict(torch.load(model_path, map_location=device))
         print('device: ', device)
 
         return cls(model, tokenizer, label_vocab, device)
@@ -173,7 +155,7 @@ class NERModel:
             highest_f1 = None
             highest_f1_epoch = None
 
-        optimizer = parameters.optimizer(model.parameters(), lr=lr, weight_decay=0.01)
+        optimizer = parameters.optimizer(model.parameters(), lr=lr)
         total_step = int((len(data) // batch_size) * max_epoch)
         scheduler = get_linear_schedule_with_warmup(optimizer, int(total_step * 0.1), total_step)
 

@@ -27,7 +27,6 @@ import lxml.etree as etree
 from lxml.etree import XMLSyntaxError
 from seqeval.metrics import accuracy_score, f1_score, precision_score, classification_report
 from seqeval.scheme import IOB2
-from transformers import BertJapaneseTokenizer
 
 from util.list_utils import list_size
 

@@ -10,6 +10,7 @@ Example usage:
 """
 
 import argparse
+import os.path
 import re
 
 from tqdm import tqdm
@@ -18,26 +19,30 @@ from BERT.predict import main as predict_from_xml_file
 from util.xml_parser import articles_to_xml
 
 
-def remove_identifier_token(texts: list):
-    return [text.replace('⧫', '') for text in texts]
+def remove_identifier_token(articles: list):
+    for article in articles:
+        article.text = article.text.replace('⧫', '')
+    return articles
 
 
-def exclude_extra_predictions(texts: list):
+def exclude_extra_predictions(articles: list):
     """
     This function removes eventual erroneous spans predictions done by the model. These are identified by the lack of the ⧫ symbol in the span.
     """
 
     pattern = r'<C>(.*?)<\/C>'
-    return [re.sub(pattern, lambda match: match.group() if '⧫' in match.group(1) else match.group(1), text) for text in texts]
+    for article in articles:
+        article.text = re.sub(pattern, lambda match: match.group() if '⧫' in match.group(1) else match.group(1), article.text)
+    return articles
 
 
-def detect_unexpanded_annotations(texts: list):
+def detect_unexpanded_annotations(articles: list):
     """
     This function detects ⧫ tokens that were not expanded by the model, thus not enclosed by start and end span tags.
     There is no fix, so just the occurrences and statistics are printed.
     """
 
-    xml_string = ''.join(texts)
+    xml_string = ''.join([article.text for article in articles])
 
     pattern = r'<C>(.*?)<\/C>|([^<]*?⧫[^>]*?)'
     matches = re.finditer(pattern, xml_string, re.DOTALL)
@@ -48,7 +53,7 @@ def detect_unexpanded_annotations(texts: list):
     for match in matches:
         if match.group(2):
             lines = xml_string.count('\n', 0, match.start(2)) + 1
-            print(f"Found ⧫ symbol on line {lines}: {match.group(2)}")
+            print(f"Found non-expanded ⧫ annotation on line {lines}: {match.group(2)}")
             unclosed_symbols += match.group(2).count('⧫')
         if match.group(1):
             total_symbols += match.group(1).count('⧫')
@@ -63,7 +68,7 @@ def detect_unexpanded_annotations(texts: list):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Applies the expansion model to predict the spans of ⧫ annotations in the text'
                                                  'This script outputs a new XML file with the predicted spans')
-    parser.add_argument('-i', '--input', type=str, nargs='+', help='Input dataset files in XML format', required=True)
+    parser.add_argument('-i', '--input', type=str, nargs='+', help='Input dataset file(s) in XML format', required=True)
     parser.add_argument('-o', '--output', type=str, help='Output folder', required=True)
     parser.add_argument('-m', '--model_path', type=str, help='Model folder', required=True)
     parser.add_argument('--split_sentences', action=argparse.BooleanOptionalAction, help='Should split sentences')
@@ -76,9 +81,12 @@ if __name__ == '__main__':
         processed_articles = predict_from_xml_file(args.model_path, file, args.split_sentences, args.local_files_only, args.device)
         processed_articles = exclude_extra_predictions(processed_articles)
 
-        detect_unexpanded_annotations(file)
+        detect_unexpanded_annotations(processed_articles)
 
         processed_articles = remove_identifier_token(processed_articles)
 
         # Save to XML file
-        articles_to_xml(processed_articles, args.output_file)
+        print( os.path.join(args.output, os.path.basename(file)))
+        articles_to_xml(processed_articles, os.path.join(args.output, os.path.basename(file)))
+
+    print('Done')

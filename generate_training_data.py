@@ -57,7 +57,7 @@ def add_token(text: str, type: DistributionType, divider: int):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate training data for the Point-to-Span expansion model.'
                                                  'This script basically adds the identifier ⧫ token to the text inside the span of the NER tags')
-    parser.add_argument('-i', '--input', type=str, nargs='+', help='Input dataset files in XML format', required=True)
+    parser.add_argument('-i', '--input', type=str, nargs='+', help='Input dataset file(s) in XML format', required=True)
     parser.add_argument('-o', '--output', type=str, help='Output folder', required=True)
     parser.add_argument('-t', '--tags', type=str, nargs='+', help='XML tags', required=True)
     parser.add_argument('-a', '--augmentation', type=int, help='Number of augmentations', required=False, default=1)
@@ -70,13 +70,12 @@ if __name__ == '__main__':
         processed_articles = []
         articles = xml_to_articles(file)
 
-        augmentation = 1
-        for i in range(augmentation):
+        for _ in range(args.augmentation):
             for article in tqdm(articles, desc='Processing articles', leave=False):
                 for tag in args.tags:
                     # Find and modify text between the desired tags
-                    modified_content = re.sub(r'<{}>(.*?)<\/{}>'.format(tag),
-                                              lambda match: '<{}>'.format(tag) + add_token(match.group(1), args.distribution, args.divider) + '</{}>'.format(tag),
+                    modified_content = re.sub(r'<' + tag + r'>(.*?)<\/' + tag + r'>',
+                                              lambda match: '<{}>'.format(tag) + add_token(match.group(1), DistributionType(args.distribution), args.standard_deviation_divider) + '</{}>'.format(tag),
                                               article.text,
                                               flags=re.DOTALL)
 
