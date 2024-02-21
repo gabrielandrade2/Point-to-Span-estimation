@@ -47,7 +47,7 @@ def detect_unexpanded_annotations(articles: list):
     pattern = r'<C>(.*?)<\/C>|([^<]*?⧫[^>]*?)'
     matches = re.finditer(pattern, xml_string, re.DOTALL)
 
-    total_symbols = 0
+    total_symbols = xml_string.count('⧫')
     unclosed_symbols = 0
 
     for match in matches:
@@ -55,8 +55,6 @@ def detect_unexpanded_annotations(articles: list):
             lines = xml_string.count('\n', 0, match.start(2)) + 1
             print(f"Found non-expanded ⧫ annotation on line {lines}: {match.group(2)}")
             unclosed_symbols += match.group(2).count('⧫')
-        if match.group(1):
-            total_symbols += match.group(1).count('⧫')
 
     percentage = (unclosed_symbols / total_symbols) * 100 if total_symbols > 0 else 0
 
@@ -70,15 +68,14 @@ if __name__ == '__main__':
                                                  'This script outputs a new XML file with the predicted spans')
     parser.add_argument('-i', '--input', type=str, nargs='+', help='Input dataset file(s) in XML format', required=True)
     parser.add_argument('-o', '--output', type=str, help='Output folder', required=True)
-    parser.add_argument('-m', '--model_path', type=str, help='Model folder', required=True)
-    parser.add_argument('--split_sentences', action=argparse.BooleanOptionalAction, help='Should split sentences')
-    parser.add_argument('--local_files_only', action=argparse.BooleanOptionalAction,
-                        help='Use transformers local files')
+    parser.add_argument('-m', '--model', type=str, help='Model folder', required=True)
+    parser.add_argument('--split_sentences', type=bool, help='Treat each sentence as a separate instance', required=False, default=True)
+    parser.add_argument('--local_files_only', action=argparse.BooleanOptionalAction, help='Use transformers local files')
     parser.add_argument('--device', type=str, help='Device to run model on', default=None, required=False)
     args = parser.parse_args()
 
     for file in tqdm(args.input, desc="Processing files"):
-        processed_articles = predict_from_xml_file(args.model_path, file, args.split_sentences, args.local_files_only, args.device)
+        processed_articles = predict_from_xml_file(args.model, file, args.split_sentences, args.local_files_only, args.device)
         processed_articles = exclude_extra_predictions(processed_articles)
 
         detect_unexpanded_annotations(processed_articles)

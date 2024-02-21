@@ -28,7 +28,7 @@ from tqdm import tqdm
 from util.xml_parser import xml_to_articles, articles_to_xml, Article
 
 
-class DistributionType(Enum):
+class StrategyType(Enum):
     RANDOM = 'random'
     GAUSSIAN = 'gaussian'
 
@@ -38,11 +38,11 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
 
-def add_token(text: str, type: DistributionType, divider: int):
+def add_token(text: str, type: StrategyType, divider: int):
     # Select a position to insert the token
-    if type == DistributionType.RANDOM:
+    if type == StrategyType.RANDOM:
         position = random.randint(0, len(text))
-    elif type == DistributionType.GAUSSIAN:
+    elif type == StrategyType.GAUSSIAN:
         position = round(get_truncated_normal(mean=len(text) / 2, sd=len(text) / divider, low=0, upp=len(text)).rvs())
     else:
         raise ValueError('Invalid distribution type')
@@ -61,8 +61,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, help='Output folder', required=True)
     parser.add_argument('-t', '--tags', type=str, nargs='+', help='XML tags', required=True)
     parser.add_argument('-a', '--augmentation', type=int, help='Number of augmentations', required=False, default=1)
-    parser.add_argument('-d', '--distribution', choices=[member.value for member in DistributionType], type=str, help='Distribution type', required=False, default='random')
-    parser.add_argument('--standard_deviation_divider', type=int, help='A value to control the standard deviation based on the annotation lenght', required=False, default=6)
+    parser.add_argument('-s', '--strategy', choices=[member.value for member in StrategyType], type=str, help='Token positioning strategy', required=False, default='random')
+    parser.add_argument('--standard_deviation_divider', type=int, help='A value to control the standard deviation based on the annotation length', required=False, default=6)
 
     args = parser.parse_args()
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
                 for tag in args.tags:
                     # Find and modify text between the desired tags
                     modified_content = re.sub(r'<' + tag + r'>(.*?)<\/' + tag + r'>',
-                                              lambda match: '<{}>'.format(tag) + add_token(match.group(1), DistributionType(args.distribution), args.standard_deviation_divider) + '</{}>'.format(tag),
+                                              lambda match: '<{}>'.format(tag) + add_token(match.group(1), StrategyType(args.strategy), args.standard_deviation_divider) + '</{}>'.format(tag),
                                               article.text,
                                               flags=re.DOTALL)
 

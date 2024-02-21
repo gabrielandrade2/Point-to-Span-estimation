@@ -2,8 +2,9 @@ import argparse
 import json
 import os
 
+import torch
 from sklearn.model_selection import train_test_split
-from transformers import BertJapaneseTokenizer
+from transformers import AutoTokenizer
 
 from BERT.Model import TrainingParameters
 from BERT.evaluate import evaluate
@@ -14,24 +15,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train from XML file')
     parser.add_argument('-i', '--training_file', type=str, help='Training file path', required=True)
     parser.add_argument('-o', '--output', type=str, help='Output folder', required=False)
-    parser.add_argument('--validation_ratio', type=float, help='Ratio of training data used in validation',
-                        required=False)
+    parser.add_argument('--validation_ratio', type=float, help='Ratio of training data used in validation', required=False)
     parser.add_argument('--test_file', type=str, help='Test file path', default=None)
-    parser.add_argument('--test_ratio', type=float,
-                        help='Ratio of training data used for testing if not test file is provided', default=0.2)
+    parser.add_argument('--test_ratio', type=float, help='Ratio of training data used for testing if not test file is provided', default=0.2)
     parser.add_argument('--tags', type=str, nargs='+', help='XML tags', required=True)
     parser.add_argument('--attr', type=str, nargs='+', help='XML tag attributes', required=False, default=None)
-    parser.add_argument('--local_files_only', action=argparse.BooleanOptionalAction,
-                        help='Use transformers local files')
-    parser.add_argument('--split_sentences', action=argparse.BooleanOptionalAction, help='Should split sentences')
-    parser.add_argument('--device', type=str, help='Device', required=False, default="cpu")
+    parser.add_argument('--local_files_only', action=argparse.BooleanOptionalAction,help='Use transformers local files')
+    parser.add_argument('--split_sentences', type=bool, help='Treat each sentence as a separate instance', required=False, default=True)
+    parser.add_argument('--device', type=str, help='Device', required=False, default=None)
+    parser.add_argument('--base-model', type=str, help='The name of the base BERT to be used (from HuggingFace) or path to a local model', required=False, default='cl-tohoku/bert-base-japanese-char-v2')
     TrainingParameters.add_parser_arguments(parser)
     args = parser.parse_args()
 
-    model_type = 'cl-tohoku/bert-base-japanese-char-v2'
+
+    if args.device is None:
+        args.device = 'cuda' if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+    model_type = args.base_model
 
     # Load the training file
-    tokenizer = BertJapaneseTokenizer.from_pretrained(model_type)
+    tokenizer = AutoTokenizer.from_pretrained(model_type)
     tokenizer.add_tokens(['⧫'])
     tokenizer.add_special_tokens({'additional_special_tokens': ['⧫']})
 

@@ -10,7 +10,7 @@ import wandb
 from seqeval.metrics import f1_score, accuracy_score, precision_score, recall_score
 from torch import optim
 from tqdm import tqdm
-from transformers import get_linear_schedule_with_warmup, BertJapaneseTokenizer, BertForTokenClassification
+from transformers import get_linear_schedule_with_warmup, AutoTokenizer, AutoModelForTokenClassification
 
 from BERT import data_utils
 from util import text_utils
@@ -78,8 +78,8 @@ class NERModel:
         self.max_size = None
 
     @classmethod
-    def load_transformers_model(cls, pre_trained_model_name, model_dir, device='cpu', local_files_only=False):
-        tokenizer = BertJapaneseTokenizer.from_pretrained(pre_trained_model_name, local_files_only=local_files_only)
+    def load_transformers_model(cls, model_dir, device='cpu', local_files_only=False):
+        tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=local_files_only)
 
         with open(model_dir + '/label_vocab.json', 'r') as f:
             label_vocab = json.load(f)
@@ -87,16 +87,9 @@ class NERModel:
         tokenizer.add_tokens(['⧫'])
         tokenizer.add_special_tokens({'additional_special_tokens': ['⧫']})
 
-        model = BertForTokenClassification.from_pretrained(pre_trained_model_name, num_labels=len(label_vocab),
+        model = AutoModelForTokenClassification.from_pretrained(model_dir, num_labels=len(label_vocab),
                                                            local_files_only=local_files_only)
-        model_path = model_dir + '/final.model'
-        try:
-            model.load_state_dict(torch.load(model_path, map_location=device))
-        except Exception as e:
-            model.resize_token_embeddings(len(tokenizer))
-            model.load_state_dict(torch.load(model_path, map_location=device))
         print('device: ', device)
-
         return cls(model, tokenizer, label_vocab, device)
 
     def set_max_size(self, max_size):
@@ -250,10 +243,6 @@ class NERModel:
                     if highest_f1 is None or highest_f1 < all_f1[-1]:
                         highest_f1 = all_f1[-1]
                         highest_f1_epoch = epoch
-                        torch.save(model.state_dict(), outputdir + '/highest_f1.model')
-
-                    # output_path = outputdir + '/checkpoint{}.model'.format(len(val_loss) - 1)
-                    # torch.save(model.state_dict(), output_path)
 
                 t.set_postfix(loss=losses[-1], val_loss=val_loss[-1] if val is not None else 0,
                               val_f1=all_f1[-1] if val is not None else 0)
@@ -275,7 +264,7 @@ class NERModel:
         plt.savefig(os.path.join(outputdir, 'training.png'))
         plt.show()
 
-        torch.save(model.state_dict(), outputdir + '/final.model')
+        os.remove(outputdir + '/lowest_loss.model')
         self.training_metrics['loss'] = losses[best_epoch]
         self.training_metrics['val_loss'] = val_loss[best_epoch]
         self.training_metrics['val_f1'] = all_f1[best_epoch]
@@ -295,6 +284,9 @@ class NERModel:
             json.dump(self.training_metrics, f)
 
         self.model = model
+
+        self.model.save_pretrained(outputdir)
+        self.tokenizer.save_pretrained(outputdir)
 
         wandb.finish()
         return model

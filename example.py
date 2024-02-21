@@ -24,22 +24,20 @@ if __name__ == "__main__":
     print("Step 1...")
     subprocess.run(["python", "generate_training_data.py",
                     "--input", "example_resources/span_annotated.xml",
-                    "--output", "output/training_data`",
+                    "--output", "output/training_data",
                     "--tags", "C",
                     "--augmentation", "10",
-                    "--distribution", "gaussian"])
+                    "--strategy", "gaussian"])
 
     print("Step 2...")
     subprocess.run(["python", "train_model.py",
                     "--training_file", "output/training_data/span_annotated.xml",
                     "--output", "output/model",
                     "--tags", "C",
-                    "--max_epochs", "10",
-                    "--split_sentences"])
+                    "--max_epochs", "10"])
 
     print("Step 3...")
     subprocess.run(["python", "expand_annotations.py",
                     "--input", "example_resources/point_annotated.xml",
                     "--output", "output/example_results",
-                    "--model_path", "output/model",
-                    "--split_sentences"])
+                    "--model", "output/model"])

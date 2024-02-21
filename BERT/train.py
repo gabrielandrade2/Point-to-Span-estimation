@@ -45,7 +45,6 @@ def train_from_sentences_tags_list_val(train_x, train_y, validation_x, validatio
     validation_x, validation_y = exclude_long_sentences(512, validation_x, validation_y)
 
     if not device:
-        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
         device = 'cuda' if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
     print('device: ' + device)
