@@ -81,14 +81,14 @@ class NERModel:
     def load_transformers_model(cls, model_dir, device='cpu', local_files_only=False):
         tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=local_files_only)
 
-        with open(model_dir + '/label_vocab.json', 'r') as f:
-            label_vocab = json.load(f)
-
         tokenizer.add_tokens(['⧫'])
         tokenizer.add_special_tokens({'additional_special_tokens': ['⧫']})
 
-        model = AutoModelForTokenClassification.from_pretrained(model_dir, num_labels=len(label_vocab),
+        model = AutoModelForTokenClassification.from_pretrained(model_dir,
                                                            local_files_only=local_files_only)
+
+        label_vocab = model.config.label2id
+
         print('device: ', device)
         return cls(model, tokenizer, label_vocab, device)
 

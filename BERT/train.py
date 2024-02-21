@@ -56,8 +56,6 @@ def train_from_sentences_tags_list_val(train_x, train_y, validation_x, validatio
     # Create vocabulary
     label_vocab = bert_utils.create_label_vocab(train_y + validation_y)
     os.makedirs(output_dir, exist_ok=True)
-    with open(output_dir + '/label_vocab.json', 'w') as f:
-        json.dump(label_vocab, f, ensure_ascii=False)
 
     # Convert to BERT data model
     train_x, train_y = bert_utils.dataset_to_bert_input(train_x, train_y, tokenizer, label_vocab)
@@ -66,7 +64,7 @@ def train_from_sentences_tags_list_val(train_x, train_y, validation_x, validatio
                                                                       label_vocab)
 
     # Get pre-trained model and fine-tune it
-    pre_trained_model = AutoModelForTokenClassification.from_pretrained(model_name, num_labels=len(label_vocab))
+    pre_trained_model = AutoModelForTokenClassification.from_pretrained(model_name, num_labels=len(label_vocab), label2id=label_vocab, id2label={v: k for k, v in label_vocab.items()})
     pre_trained_model.config.attention_probs_dropout_prob = 0.4  # Set the dropout probability for attention layers
     pre_trained_model.config.hidden_dropout_prob = 0.4  # Set the dropout probability for hidden laye
     pre_trained_model.resize_token_embeddings(len(tokenizer))

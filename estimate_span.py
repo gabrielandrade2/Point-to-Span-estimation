@@ -83,7 +83,7 @@ if __name__ == '__main__':
         processed_articles = remove_identifier_token(processed_articles)
 
         # Save to XML file
-        print( os.path.join(args.output, os.path.basename(file)))
+        print(os.path.join(args.output, os.path.basename(file)))
         articles_to_xml(processed_articles, os.path.join(args.output, os.path.basename(file)))
 
     print('Done')
