@@ -37,7 +37,7 @@ if __name__ == "__main__":
                     "--max_epochs", "10"])
 
     print("Step 3...")
-    subprocess.run(["python", "expand_annotations.py",
+    subprocess.run(["python", "estimate_span.py",
                     "--input", "example_resources/point_annotated.xml",
                     "--output", "output/example_results",
                     "--model", "output/model"])
