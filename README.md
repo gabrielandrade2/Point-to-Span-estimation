@@ -1,6 +1,7 @@
 # Point-to-Span estimation BERT model
 
-A model used to estimate the start and end of a Named Entity (NE) span based on a Point annotation.
+A model used to estimate the start and end of a Named Entity (NE) span based on a Point annotation,
+as used in the paper "Is boundary annotation necessary? Evaluating boundary-free approaches to improve clinical named entity annotation efficiency".
 
 This repository contains the codes for generating the training data based on an existing 
 span-annotated dataset, training the estimation model and estimating the NE on a point-annotated 
